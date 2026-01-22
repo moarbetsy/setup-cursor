@@ -14,7 +14,7 @@ Installers:
   - Architecture: x64
     InstallerType: portable
     InstallerUrl: https://github.com/moarbetsy/setup-cursor/releases/download/v1.0.0/setup-cursor-v1.0.0.zip
-    InstallerSha256: 525EBA6A36C8066C6E6B446ACD4AC8B832F9617EAD77E23AFEF2CF1E247043AE
+    InstallerSha256: 00610F34491A333F4243152DBA5EF588AEFF8BB079BBC7191EB40A712E2550E5
     Commands:
       - setup-cursor
 
