@@ -36,7 +36,7 @@ if (-not (Test-Path $tempDir)) {
 
 # Download required files if not present
 $requiredFiles = @(
-    "https://raw.githubusercontent.com/setup-cursor/setup-cursor/main/run.ps1"
+    "https://raw.githubusercontent.com/moarbetsy/setup-cursor/main/run.ps1"
 )
 
 $localScript = Join-Path $tempDir "run.ps1"

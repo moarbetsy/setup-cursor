@@ -7,13 +7,13 @@ Version: 1.0.0
 Name: Setup Cursor
 Description: Comprehensive development environment setup tool for Cursor IDE + PowerShell (winget-like)
 Publisher: Setup Cursor
-Homepage: https://github.com/setup-cursor/setup-cursor
+Homepage: https://github.com/moarbetsy/setup-cursor
 License: MIT
 
 Installers:
   - Architecture: x64
     InstallerType: portable
-    InstallerUrl: https://github.com/setup-cursor/setup-cursor/releases/download/v1.0.0/setup-cursor-v1.0.0.zip
+    InstallerUrl: https://github.com/moarbetsy/setup-cursor/releases/download/v1.0.0/setup-cursor-v1.0.0.zip
     InstallerSha256: 525EBA6A36C8066C6E6B446ACD4AC8B832F9617EAD77E23AFEF2CF1E247043AE
     Commands:
       - setup-cursor

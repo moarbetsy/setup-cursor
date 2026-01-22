@@ -4,7 +4,7 @@
 param(
     [string]$Version = "1.0.0",
     [string]$GitHubToken, # Get from https://github.com/settings/tokens
-    [string]$Repo = "setup-cursor/setup-cursor"
+    [string]$Repo = "moarbetsy/setup-cursor"
 )
 
 Write-Host "📦 Creating GitHub release v$Version..." -ForegroundColor Cyan

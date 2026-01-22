@@ -2,7 +2,7 @@
 # Install setup-cursor from any computer with internet access
 
 param(
-    [string]$GitHubRepo = "setup-cursor/setup-cursor",  # Change this to your actual GitHub repo
+    [string]$GitHubRepo = "moarbetsy/setup-cursor",  # Change this to your actual GitHub repo
     [string]$Branch = "main",
     [ValidateSet("BatchFile", "PowerShellProfile", "Path")]
     [string]$Method = "PowerShellProfile",

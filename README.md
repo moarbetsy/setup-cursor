@@ -19,7 +19,7 @@ A streamlined development environment setup for Cursor IDE + PowerShell on Windo
 
 ```powershell
 # Install globally (recommended)
-irm https://raw.githubusercontent.com/setup-cursor/setup-cursor/main/install-from-anywhere.ps1 | iex
+irm https://raw.githubusercontent.com/moarbetsy/setup-cursor/main/install-from-anywhere.ps1 | iex
 
 # Or use portably without installation
 irm https://raw.githubusercontent.com/yourusername/setup-cursor/main/setup-cursor-portable.ps1 | iex -Setup
@@ -34,7 +34,7 @@ setup-cursor -NewProject "my-app"  # Create new project
 
 #### Distribution Options
 
-1. **One-liner Install**: `irm https://raw.githubusercontent.com/setup-cursor/setup-cursor/main/install-from-anywhere.ps1 | iex`
+1. **One-liner Install**: `irm https://raw.githubusercontent.com/moarbetsy/setup-cursor/main/install-from-anywhere.ps1 | iex`
 2. **Portable Usage**: `irm https://raw.githubusercontent.com/yourusername/setup-cursor/main/setup-cursor-portable.ps1 | iex -Setup`
 3. **Winget Package**: `winget install YourName.SetupCursor` (once published)
 4. **GitHub Release**: Download ZIP from releases page
@@ -50,7 +50,7 @@ To make setup-cursor available from any computer worldwide:
 git init
 git add .
 git commit -m "Initial release"
-git remote add origin https://github.com/setup-cursor/setup-cursor.git
+git remote add origin https://github.com/moarbetsy/setup-cursor.git
 git push -u origin main
 ```
 
@@ -441,7 +441,7 @@ setup-cursor                   # Run the project
 
 #### Option 1: Install Globally (Recommended)
 ```powershell
-irm https://raw.githubusercontent.com/setup-cursor/setup-cursor/main/install-from-anywhere.ps1 | iex
+irm https://raw.githubusercontent.com/moarbetsy/setup-cursor/main/install-from-anywhere.ps1 | iex
 ```
 
 #### Option 2: Use Portably (No Installation)

@@ -47,10 +47,10 @@
             Tags = @('Cursor', 'PowerShell', 'Development', 'Setup', 'Winget', 'IDE', 'Environment')
 
             # A URL to the license for this module.
-            LicenseUri = 'https://github.com/setup-cursor/setup-cursor/blob/main/LICENSE'
+            LicenseUri = 'https://github.com/moarbetsy/setup-cursor/blob/main/LICENSE'
 
             # A URL to the main website for this project.
-            ProjectUri = 'https://github.com/setup-cursor/setup-cursor'
+            ProjectUri = 'https://github.com/moarbetsy/setup-cursor'
 
             # ReleaseNotes of this module
             ReleaseNotes = @'
