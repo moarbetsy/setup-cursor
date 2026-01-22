@@ -23,7 +23,14 @@ $ProgressPreference = "SilentlyContinue"
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 $OutputEncoding = [System.Text.UTF8Encoding]::new()
 
-$ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptPath = $MyInvocation.MyCommand.Path
+if ($null -eq $scriptPath) {
+    # Fallback for when script was executed via iex (no file path)
+    # Assume we're already in the project root directory
+    $ProjectRoot = Get-Location
+} else {
+    $ProjectRoot = Split-Path -Parent $scriptPath
+}
 Set-Location $ProjectRoot
 
 $LogsDir = Join-Path $ProjectRoot "logs"

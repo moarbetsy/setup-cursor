@@ -3,7 +3,13 @@
 # Import the profile script to make setup-cursor function available
 
 # Get the module directory
-$moduleDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptPath = $MyInvocation.MyCommand.Path
+if ($null -eq $scriptPath) {
+    # Fallback for when script was executed via iex (no file path)
+    $moduleDir = "$HOME\.setup-cursor"
+} else {
+    $moduleDir = Split-Path -Parent $scriptPath
+}
 
 # Import the profile script
 $profileScriptPath = Join-Path $moduleDir "setup-cursor-profile.ps1"

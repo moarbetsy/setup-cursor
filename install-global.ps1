@@ -12,7 +12,14 @@ Write-Host "🔧 Installing setup-cursor globally..." -ForegroundColor Cyan
 Write-Host "Method: $Method" -ForegroundColor Gray
 Write-Host ""
 
-$SetupCursorDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptPath = $MyInvocation.MyCommand.Path
+if ($null -eq $scriptPath) {
+    # Fallback for when script was executed via iex (no file path)
+    # Assume we're in the setup_cursor directory
+    $SetupCursorDir = Get-Location
+} else {
+    $SetupCursorDir = Split-Path -Parent $scriptPath
+}
 $RunScriptPath = Join-Path $SetupCursorDir "run.ps1"
 $ProfileScriptPath = Join-Path $SetupCursorDir "setup-cursor-profile.ps1"
 $BatchFilePath = Join-Path $SetupCursorDir "setup-cursor.cmd"
