@@ -118,3 +118,21 @@ This file is the running log for issues encountered while working in this worksp
 - **Fix**: Created cursor-settings.json with comprehensive PowerShell and Cursor IDE configuration settings
 - **Prevention**: Ensure all required template files are included in project distribution; add template file validation to bootstrap process
 - **Status**: resolved
+
+### 2026-01-23 21:05 (local) — uv sync failed: unexpected argument '-C' found
+- **Context**: Running cursorkit.ps1 -Setup to configure CursorKit environment
+- **Command / action**: `.\cursorkit.ps1 -Setup`
+- **Observed**: `error: unexpected argument '-C' found` when executing `uv -C $RepoRoot sync`
+- **Root cause**: The `uv` command does not support the `-C` flag (change directory) like `git` or `cargo` do. The script was using `uv -C $RepoRoot sync` which is invalid syntax for `uv`.
+- **Fix**: Changed the `uv sync` call to use `Push-Location` and `Pop-Location` pattern (same as `bun install` in the script) instead of the `-C` flag: `Push-Location $RepoRoot; try { uv sync } finally { Pop-Location }`
+- **Prevention**: Always verify command-line flags before using them. The `-C` flag is common in tools like `git` and `cargo`, but not all tools support it. Use directory change patterns (`Push-Location`/`Pop-Location` in PowerShell) when tools don't support directory flags.
+- **Status**: resolved
+
+### 2026-01-23 21:06 (local) — uv sync failed: build backend error with hatchling
+- **Context**: Running cursorkit.ps1 -Setup after fixing the `-C` flag issue
+- **Command / action**: `.\cursorkit.ps1 -Setup`
+- **Observed**: `uv sync` failed with build backend error: `Call to 'hatchling.build.build_editable' failed (exit code: 1)`. Also showed deprecation warning: `The 'tool.uv.dev-dependencies' field is deprecated; use 'dependency-groups.dev' instead`
+- **Root cause**: The `pyproject.toml` was configured as an installable Python package with a build system (hatchling), but the project has no package structure (no `setup_cursor/` directory with `__init__.py`). This is a PowerShell-based setup tool, not a Python library, so it shouldn't be built as a package. Additionally, `tool.uv.dev-dependencies` is deprecated in favor of `dependency-groups.dev`.
+- **Fix**: Removed the `[build-system]` section entirely (not needed for script-only projects). Initially tried to fix deprecation by changing to `tool.uv.dependency-groups = { dev = [] }`, but this failed because empty dependency groups are not allowed. Final solution: removed the entire `[tool.uv]` section since it was only needed for empty dev-dependencies. uv will now install dependencies without attempting to build/install the project as a package.
+- **Prevention**: For script-only projects or applications (not libraries), don't include a `[build-system]` section in `pyproject.toml`. Only add a build system if the project needs to be installed as a package with entry points. If you have no dev dependencies, don't include an empty `[tool.uv]` section with empty dependency-groups - just omit it entirely.
+- **Status**: resolved
