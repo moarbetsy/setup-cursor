@@ -19,6 +19,7 @@ import { detectStacks } from "../../src/detector.js";
 import { runScaffold } from "../../src/scaffold.js";
 import { doctorFix } from "../../src/doctor.js";
 import { collectReport, collectReports, generateMergedReport } from "../../src/report.js";
+import { runVerification } from "../../src/verification.js";
 
 const server = new Server(
   {
@@ -121,6 +122,111 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           },
           required: ["reportPath"]
+        }
+      },
+      {
+        name: "run_verification",
+        description: "Run verification loops to verify code changes (tests, linting, type checking)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            configPath: {
+              type: "string",
+              description: "Path to precursor.json (optional)"
+            },
+            stacks: {
+              type: "array",
+              items: {
+                type: "string"
+              },
+              description: "Specific stacks to verify (optional, verifies all detected stacks if not provided)"
+            }
+          }
+        }
+      },
+      {
+        name: "add_knowledge_entry",
+        description: "Add an entry to the shared knowledge base (PRECURSOR.md)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            title: {
+              type: "string",
+              description: "Entry title"
+            },
+            category: {
+              type: "string",
+              enum: ["mistake", "pattern", "quirk", "practice", "other"],
+              description: "Entry category"
+            },
+            content: {
+              type: "string",
+              description: "Entry content (markdown supported)"
+            },
+            relatedIssues: {
+              type: "array",
+              items: {
+                type: "string"
+              },
+              description: "Related issue references (optional)"
+            },
+            configPath: {
+              type: "string",
+              description: "Path to precursor.json (optional)"
+            }
+          },
+          required: ["title", "category", "content"]
+        }
+      },
+      {
+        name: "read_knowledge_base",
+        description: "Read the shared knowledge base (PRECURSOR.md)",
+        inputSchema: {
+          type: "object",
+          properties: {
+            configPath: {
+              type: "string",
+              description: "Path to precursor.json (optional)"
+            }
+          }
+        }
+      },
+      {
+        name: "execute_command",
+        description: "Execute a custom slash command",
+        inputSchema: {
+          type: "object",
+          properties: {
+            commandName: {
+              type: "string",
+              description: "Name of the command to execute"
+            },
+            configPath: {
+              type: "string",
+              description: "Path to precursor.json (optional)"
+            },
+            interactiveInputs: {
+              type: "object",
+              description: "Inputs for interactive steps (optional)",
+              additionalProperties: {
+                type: "string"
+              }
+            }
+          },
+          required: ["commandName"]
+        }
+      },
+      {
+        name: "list_commands",
+        description: "List all available slash commands",
+        inputSchema: {
+          type: "object",
+          properties: {
+            configPath: {
+              type: "string",
+              description: "Path to precursor.json (optional)"
+            }
+          }
         }
       }
     ]
@@ -237,6 +343,136 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: output
+            }
+          ]
+        };
+      }
+
+      case "run_verification": {
+        const config = await loadConfig(args?.configPath as string | undefined);
+        const stacks = (args?.stacks as string[] | undefined) || await detectStacks(config);
+        const result = await runVerification(config, stacks);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: result.success,
+                results: result.results,
+                errors: result.errors,
+                warnings: result.warnings
+              }, null, 2)
+            }
+          ]
+        };
+      }
+
+      case "add_knowledge_entry": {
+        const config = await loadConfig(args?.configPath as string | undefined);
+        const title = args?.title as string;
+        const category = args?.category as "mistake" | "pattern" | "quirk" | "practice" | "other";
+        const content = args?.content as string;
+        const relatedIssues = args?.relatedIssues as string[] | undefined;
+
+        if (!title || !category || !content) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "title, category, and content are required"
+          );
+        }
+
+        const date = new Date().toISOString().split("T")[0];
+        const result = addKnowledgeEntry(
+          {
+            title,
+            date,
+            category,
+            content,
+            relatedIssues
+          },
+          config
+        );
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.success
+                ? `Knowledge entry added: ${title}`
+                : `Failed to add entry: ${result.message}`
+            }
+          ]
+        };
+      }
+
+      case "read_knowledge_base": {
+        const config = await loadConfig(args?.configPath as string | undefined);
+        const content = readKnowledgeBase(config);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: content || "Knowledge base is empty or disabled"
+            }
+          ]
+        };
+      }
+
+      case "execute_command": {
+        const config = await loadConfig(args?.configPath as string | undefined);
+        const commandName = args?.commandName as string;
+        const interactiveInputs = args?.interactiveInputs as Record<string, string> | undefined;
+
+        if (!commandName) {
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            "commandName is required"
+          );
+        }
+
+        const result = await executeCommand(commandName, config, interactiveInputs);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: result.success
+                ? `Command executed successfully:\n${result.output}`
+                : `Command failed:\n${result.error || result.output}`
+            }
+          ]
+        };
+      }
+
+      case "list_commands": {
+        const config = await loadConfig(args?.configPath as string | undefined);
+        const commands = getAllCommands(config);
+
+        if (commands.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "No commands available. Add commands to precursor.json or .precursor/commands/*.json"
+              }
+            ]
+          };
+        }
+
+        const commandsList = commands.map(cmd => {
+          const steps = cmd.steps.map(s => 
+            s.type === "shell" ? `  - ${s.command}` : `  - [Interactive: ${s.prompt}]`
+          ).join("\n");
+          return `**/${cmd.name}**: ${cmd.description}\n${steps}`;
+        }).join("\n\n");
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Available commands:\n\n${commandsList}`
             }
           ]
         };

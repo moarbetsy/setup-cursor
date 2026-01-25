@@ -17,9 +17,13 @@
 10. [State Management](#state-management)
 11. [Backup and Rollback](#backup-and-rollback)
 12. [CI/CD Integration](#cicd-integration)
-13. [Troubleshooting](#troubleshooting)
-14. [Development](#development)
-15. [Best Practices](#best-practices)
+13. [Verification Loops](#verification-loops)
+14. [Post-Processing Hooks](#post-processing-hooks)
+15. [Shared Knowledge Base](#shared-knowledge-base)
+16. [Slash Commands](#slash-commands)
+17. [Troubleshooting](#troubleshooting)
+18. [Development](#development)
+19. [Best Practices](#best-practices)
 
 ---
 
@@ -93,9 +97,11 @@ precursor/
 4. **Tool Resolution**: Checks system PATH → package manager → portable cache
 5. **Backup**: Creates timestamped backup before any writes
 6. **Scaffolding**: Generates/updates `.cursor/rules/`, `.vscode/settings.json`, etc.
-7. **CI Generation**: Creates GitHub Actions workflows
-8. **Secret Scanning**: Scans codebase for exposed secrets
-9. **State Update**: Saves hash-based state for efficient re-runs
+7. **Post-Processing Hooks**: Runs formatters and linters on generated code
+8. **Verification**: Runs tests, linting, and type checking
+9. **CI Generation**: Creates GitHub Actions workflows
+10. **Secret Scanning**: Scans codebase for exposed secrets
+11. **State Update**: Saves hash-based state for efficient re-runs
 
 ### Data Flow
 
@@ -1674,6 +1680,308 @@ Or disable specific workflows:
   }
 }
 ```
+
+---
+
+## Verification Loops
+
+**Based on Boris Cherny's principle**: "Probably the most important thing to get great results - give AI a way to verify its work. If AI has that feedback loop, it will 2-3x the quality of the final result."
+
+### Overview
+
+Verification loops automatically run tests, linting, and type checking after scaffolding to ensure code quality. This feature implements the critical principle that verification dramatically improves AI-generated code quality.
+
+### Configuration
+
+Enable verification in `precursor.json`:
+
+```json
+{
+  "verification": {
+    "enabled": true,
+    "failOnError": false,
+    "browserTesting": false,
+    "commands": {
+      "python": ["uv run pytest", "uv run ruff check ."],
+      "web": ["bun test", "bunx biome check ."]
+    }
+  }
+}
+```
+
+### Default Verification Commands
+
+Precursor automatically runs stack-specific verification:
+
+- **Python**: `ruff check`, `ruff format --check`, type checking, `pytest`
+- **Web/TypeScript**: `biome check`, `tsc --noEmit`, `bun test`
+- **Rust**: `cargo fmt --check`, `cargo clippy`, `cargo test`
+- **C/C++**: `cmake --build`, `ctest`
+
+### Custom Commands
+
+Override default commands per stack:
+
+```json
+{
+  "verification": {
+    "commands": {
+      "python": ["uv run my-custom-test"],
+      "web": ["bun run e2e"]
+    }
+  }
+}
+```
+
+### Browser Testing
+
+Enable browser-based UI testing (requires `cursor-ide-browser` MCP):
+
+```json
+{
+  "verification": {
+    "browserTesting": true
+  }
+}
+```
+
+### Integration
+
+Verification runs automatically after scaffolding. Results are included in the setup output and can be accessed via the `run_verification` MCP tool.
+
+### Verification Rule
+
+Precursor generates `.cursor/rules/verification.mdc` that instructs Cursor to:
+- Always verify changes after making them
+- Run relevant tests and checks
+- Fix issues immediately
+- Document failures in PRECURSOR.md
+
+---
+
+## Post-Processing Hooks
+
+**Based on Boris Cherny's PostToolUse hook pattern**: Automatically format code after generation to prevent formatting errors in CI.
+
+### Overview
+
+Post-processing hooks run automatically after scaffolding to format and lint generated code. This handles the "last 10% of formatting" that might be missed.
+
+### Configuration
+
+Configure hooks in `precursor.json`:
+
+```json
+{
+  "hooks": {
+    "postScaffold": [
+      {
+        "name": "format-code",
+        "command": "bunx biome format --write .",
+        "stack": "web",
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+### Default Hooks
+
+Precursor automatically runs stack-specific formatters:
+
+- **Python**: `ruff format .` (if using ruff)
+- **Web/TypeScript**: `biome format --write .` (if using biome)
+- **Rust**: `cargo fmt`
+- **C/C++**: `clang-format -i` (for C/C++ files)
+
+### Custom Hooks
+
+Add custom hooks for any stack:
+
+```json
+{
+  "hooks": {
+    "postScaffold": [
+      {
+        "name": "custom-lint",
+        "command": "my-custom-linter",
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+### Hook Results
+
+Hook results are included in the setup output. Failed hooks generate warnings but don't fail setup unless configured to do so.
+
+---
+
+## Shared Knowledge Base
+
+**Based on Boris Cherny's CLAUDE.md pattern**: Accumulate team knowledge to prevent repeated mistakes and implement "Compounding Engineering."
+
+### Overview
+
+The shared knowledge base (PRECURSOR.md) accumulates team knowledge over time, making the AI smarter about your codebase. When mistakes are made, they're documented here to prevent repetition.
+
+### Configuration
+
+Enable knowledge base in `precursor.json`:
+
+```json
+{
+  "knowledge": {
+    "enabled": true,
+    "file": ".cursor/PRECURSOR.md"
+  }
+}
+```
+
+### File Structure
+
+PRECURSOR.md is automatically initialized with:
+
+- Common mistakes and fixes
+- Project-specific patterns
+- Tool configuration quirks
+- Best practices learned over time
+
+### Adding Entries
+
+#### Via MCP Tool
+
+Use the `add_knowledge_entry` MCP tool:
+
+```json
+{
+  "title": "Common mistake: forgetting to run tests",
+  "category": "mistake",
+  "content": "Always run tests after making changes. Use verification loops.",
+  "relatedIssues": ["2026-01-24 issue"]
+}
+```
+
+#### Manually
+
+Add entries directly to PRECURSOR.md:
+
+```markdown
+### 2026-01-24 — Common mistake: forgetting to run tests
+
+**Category**: mistake
+
+Always run tests after making changes. Use verification loops.
+
+**Related Issues**: 2026-01-24 issue
+
+---
+```
+
+### Categories
+
+- **mistake**: Common errors and how to fix them
+- **pattern**: Project-specific patterns and conventions
+- **quirk**: Tool configuration quirks and workarounds
+- **practice**: Best practices and recommendations
+- **other**: Miscellaneous knowledge
+
+### Knowledge Base Rule
+
+Precursor generates `.cursor/rules/knowledge-base.mdc` that instructs Cursor to:
+- Check PRECURSOR.md before making changes
+- Document mistakes and fixes
+- Add new patterns and practices
+- Reference related issues from REPORT.md
+
+### Integration with REPORT.md
+
+Knowledge entries can reference resolved issues from REPORT.md, creating a comprehensive knowledge system.
+
+---
+
+## Slash Commands
+
+**Based on Boris Cherny's slash commands pattern**: Automate repeated workflows that are performed many times daily.
+
+### Overview
+
+Slash commands allow you to define custom workflows for repeated tasks. Commands are checked into git and available to both developers and AI agents.
+
+### Configuration
+
+Define commands in `precursor.json`:
+
+```json
+{
+  "commands": {
+    "commit-push-pr": {
+      "description": "Commit, push, and create PR",
+      "steps": [
+        { "type": "shell", "command": "git status" },
+        { "type": "shell", "command": "git add ." },
+        { "type": "interactive", "prompt": "Commit message" },
+        { "type": "shell", "command": "git commit -m \"{commit_message}\"" },
+        { "type": "shell", "command": "git push" }
+      ]
+    }
+  }
+}
+```
+
+### Command Format
+
+Commands consist of steps:
+
+- **shell**: Execute a shell command
+- **interactive**: Prompt for user input
+
+### File-Based Commands
+
+Store commands in `.precursor/commands/*.json` files:
+
+```json
+{
+  "name": "test-all",
+  "description": "Run all tests",
+  "steps": [
+    { "type": "shell", "command": "bun test" },
+    { "type": "shell", "command": "uv run pytest" }
+  ]
+}
+```
+
+### Executing Commands
+
+#### Via MCP Tool
+
+Use the `execute_command` MCP tool:
+
+```json
+{
+  "commandName": "commit-push-pr",
+  "interactiveInputs": {
+    "Commit message": "Fix bug in feature X"
+  }
+}
+```
+
+#### Listing Commands
+
+Use the `list_commands` MCP tool to see all available commands.
+
+### Commands Rule
+
+Precursor generates `.cursor/rules/commands.mdc` that documents available commands and how to use them.
+
+### Benefits
+
+- **Automation**: Save time on repeated workflows
+- **Consistency**: Standardize common tasks across team
+- **AI-Friendly**: Commands are available to AI agents via MCP
+- **Version Controlled**: Commands are checked into git
 
 ---
 

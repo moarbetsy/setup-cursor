@@ -17,6 +17,10 @@ export * from "./secrets.js";
 export * from "./backup.js";
 export * from "./system.js";
 export * from "./report.js";
+export * from "./verification.js";
+export * from "./hooks.js";
+export * from "./knowledge.js";
+export * from "./commands.js";
 
 import type { PrecursorConfig } from "./config.js";
 import { loadConfig, validateConfig } from "./config.js";
@@ -28,6 +32,8 @@ import { scanSecrets } from "./secrets.js";
 import { ensureBackup, restoreBackup } from "./backup.js";
 import { updateState, resetState } from "./state.js";
 import { resolveTool, installTool } from "./toolchain.js";
+import { runVerification } from "./verification.js";
+import { runPostScaffoldHooks } from "./hooks.js";
 
 export interface PrecursorOptions {
   configPath?: string;
@@ -66,6 +72,22 @@ export async function setup(options: PrecursorOptions = {}): Promise<PrecursorRe
 
     // Generate/update files
     await runScaffold(config, stacks, options);
+
+    // Run post-scaffold hooks (formatting, etc.)
+    await runPostScaffoldHooks(config, stacks, options);
+
+    // Run verification loops
+    const verificationReport = await runVerification(config, stacks, options);
+    const verificationCfg = (config.verification || {}) as { failOnError?: boolean };
+    if (!verificationReport.success && verificationCfg.failOnError === true) {
+      return {
+        success: false,
+        message: "Verification failed",
+        data: verificationReport,
+        errors: verificationReport.errors,
+        warnings: verificationReport.warnings
+      };
+    }
 
     // Generate CI workflows
     if (config.ci?.enabled !== false) {

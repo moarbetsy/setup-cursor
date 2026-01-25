@@ -353,6 +353,121 @@
           "description": "Project name/identifier for collected reports"
         }
       }
+    },
+    "verification": {
+      "type": "object",
+      "description": "Verification loops configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable verification after scaffolding"
+        },
+        "commands": {
+          "type": "object",
+          "description": "Stack-specific verification commands",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "browserTesting": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable browser-based UI testing (requires cursor-ide-browser MCP)"
+        },
+        "failOnError": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fail setup if verification fails"
+        }
+      }
+    },
+    "hooks": {
+      "type": "object",
+      "description": "Post-processing hooks configuration",
+      "properties": {
+        "postScaffold": {
+          "type": "array",
+          "description": "Hooks to run after scaffolding",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Hook name"
+              },
+              "command": {
+                "type": "string",
+                "description": "Command to execute"
+              },
+              "stack": {
+                "type": "string",
+                "description": "Stack this hook applies to (optional)"
+              },
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              }
+            },
+            "required": ["name", "command"]
+          }
+        }
+      }
+    },
+    "knowledge": {
+      "type": "object",
+      "description": "Shared knowledge base configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable knowledge base"
+        },
+        "file": {
+          "type": "string",
+          "default": ".cursor/PRECURSOR.md",
+          "description": "Path to knowledge base file"
+        }
+      }
+    },
+    "commands": {
+      "type": "object",
+      "description": "Custom slash commands configuration",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Command description"
+          },
+          "steps": {
+            "type": "array",
+            "description": "Command execution steps",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["shell", "interactive"],
+                  "description": "Step type"
+                },
+                "command": {
+                  "type": "string",
+                  "description": "Command to execute (for shell type)"
+                },
+                "prompt": {
+                  "type": "string",
+                  "description": "Prompt text (for interactive type)"
+                }
+              },
+              "required": ["type"]
+            }
+          }
+        }
+      }
     }
   }
 }

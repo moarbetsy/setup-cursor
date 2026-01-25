@@ -7,6 +7,8 @@ import { resolve, dirname, basename } from "node:path";
 import { mergeFile } from "./merge.js";
 import type { PrecursorConfig } from "./config.js";
 import type { PrecursorOptions } from "./index.js";
+import { initializeKnowledgeBase as initKnowledge, generateKnowledgeRule } from "./knowledge.js";
+import { ensureCommandsDirectory, getAllCommands, generateCommandsRule } from "./commands.js";
 
 /**
  * Run scaffold to generate/update files
@@ -38,6 +40,15 @@ export async function runScaffold(
 
   // Update .gitignore and .cursorignore
   await updateIgnoreFiles(config, stacks);
+
+  // Generate verification rule
+  await generateVerificationRule(config, stacks);
+
+  // Initialize knowledge base
+  await initializeKnowledgeBase(config, stacks);
+
+  // Setup commands directory and generate rule
+  await setupCommands(config);
 }
 
 /**
@@ -355,5 +366,170 @@ async function updateIgnoreFiles(
     }
   } else {
     await writeTextFile(".cursorignore", newPatterns, { backup: false });
+  }
+}
+
+/**
+ * Generate verification rule
+ */
+async function generateVerificationRule(
+  config: PrecursorConfig,
+  stacks: string[]
+): Promise<void> {
+  const verificationCfg = (config.verification || {}) as { enabled?: boolean; browserTesting?: boolean };
+  if (verificationCfg.enabled === false) {
+    return;
+  }
+
+  const rulePath = ".cursor/rules/verification.mdc";
+  
+  // Build stack-specific verification sections
+  const stackSections: string[] = [];
+  for (const stack of stacks) {
+    const stackConfig = config[stack as keyof PrecursorConfig];
+    if (!stackConfig) continue;
+    
+    let commands: string[] = [];
+    switch (stack) {
+      case "python": {
+        const pythonCfg = config.python || {};
+        const runtime = pythonCfg.runtime || "uv";
+        commands = [
+          `${runtime} run ruff check .`,
+          `${runtime} run ruff format --check .`,
+          pythonCfg.typechecker && pythonCfg.typechecker !== "none"
+            ? `${runtime} run ${pythonCfg.typechecker} .`
+            : null,
+          `${runtime} run pytest`
+        ].filter((cmd): cmd is string => cmd !== null);
+        break;
+      }
+      case "web": {
+        const webCfg = config.web || {};
+        const runtime = webCfg.runtime || "bun";
+        commands = [
+          `${runtime === "bun" ? "bunx" : "npx"} biome check .`,
+          webCfg.typechecker && webCfg.typechecker !== "none"
+            ? `${runtime === "bun" ? "bunx" : "npx"} tsc --noEmit`
+            : null,
+          `${runtime} test`
+        ].filter((cmd): cmd is string => cmd !== null);
+        break;
+      }
+      case "rust": {
+        commands = [
+          "cargo fmt --check",
+          "cargo clippy -- -D warnings",
+          "cargo test"
+        ];
+        break;
+      }
+      case "cpp": {
+        commands = [
+          "cmake --build build",
+          "cd build && ctest"
+        ];
+        break;
+      }
+    }
+    
+    if (commands.length > 0) {
+      stackSections.push(`### ${stack.toUpperCase()}\n\`\`\`bash\n${commands.join("\n")}\n\`\`\``);
+    }
+  }
+
+  const browserTestingNote = verificationCfg.browserTesting
+    ? "Browser-based UI testing is enabled. Use the cursor-ide-browser MCP tools to verify UI changes."
+    : "Browser testing is disabled. Enable in precursor.json to use browser-based verification.";
+
+  const content = `---
+description: Verification loops - Always verify your work
+alwaysApply: true
+---
+
+# Verification Loops
+
+> "Probably the most important thing to get great results - give AI a way to verify its work. If AI has that feedback loop, it will 2-3x the quality of the final result." - Boris Cherny
+
+## Principle
+
+Always verify changes after making them. This includes:
+- Running tests
+- Checking linting/formatting
+- Type checking
+- Manual verification when appropriate
+
+## Stack-Specific Verification
+
+${stackSections.join("\n\n")}
+
+## Browser Testing
+
+${browserTestingNote}
+
+## Best Practices
+
+1. **Always verify after changes**: Run relevant tests and checks
+2. **Fix issues immediately**: Don't leave broken code
+3. **Use verification loops**: Iterate until verification passes
+4. **Document failures**: Add to PRECURSOR.md if verification reveals patterns
+
+## Integration
+
+Precursor automatically runs verification after scaffolding. Results are included in the setup output.
+`;
+
+  if (!existsSync(rulePath)) {
+    writeFileSync(rulePath, content, "utf-8");
+  } else {
+    // Merge with existing (preserve user additions)
+    await mergeFile(rulePath, { content }, { backup: true });
+  }
+}
+
+/**
+ * Initialize knowledge base
+ */
+async function initializeKnowledgeBase(
+  config: PrecursorConfig,
+  _stacks: string[]
+): Promise<void> {
+  const knowledgeCfg = (config.knowledge || {}) as { enabled?: boolean };
+  if (knowledgeCfg.enabled === false) {
+    return;
+  }
+
+  // Initialize knowledge base file
+  initKnowledge(config);
+
+  // Generate knowledge base rule
+  const rulePath = ".cursor/rules/knowledge-base.mdc";
+  const content = generateKnowledgeRule();
+
+  if (!existsSync(rulePath)) {
+    writeFileSync(rulePath, content, "utf-8");
+  } else {
+    // Merge with existing (preserve user additions)
+    await mergeFile(rulePath, { content }, { backup: true });
+  }
+}
+
+/**
+ * Setup commands system
+ */
+async function setupCommands(config: PrecursorConfig): Promise<void> {
+  // Ensure commands directory exists
+  ensureCommandsDirectory();
+
+  // Generate commands rule
+  const commands = getAllCommands(config);
+  const rulePath = ".cursor/rules/commands.mdc";
+  const content = generateCommandsRule(commands);
+
+  if (!existsSync(rulePath)) {
+    writeFileSync(rulePath, content, "utf-8");
+  } else {
+    // Merge with existing (preserve user additions)
+    await mergeFile(rulePath, { content }, { backup: true });
   }
 }
